@@ -6,7 +6,7 @@ dotenv.config();
 /**
  * Response from the Strykr AI API
  */
-export interface StrykResponse {
+export interface StrykrResponse {
   insight: string;
   confidence: number;
   sources?: string[];
@@ -16,7 +16,7 @@ export interface StrykResponse {
 /**
  * Client for interacting with the Strykr AI API
  */
-export class StrykApiClient {
+export class StrykrApiClient {
   private readonly apiUrl: string;
   private readonly apiKey: string;
 
@@ -24,20 +24,20 @@ export class StrykApiClient {
    * Initialize the Strykr API client
    */
   constructor() {
-    this.apiUrl = process.env.STRYK_API_URL || 'https://api.stryk.ai/v1';
-    this.apiKey = process.env.STRYK_API_KEY || '';
+    this.apiUrl = process.env.STRYKR_API_URL || 'https://api.strykr.ai/v1';
+    this.apiKey = process.env.STRYKR_API_KEY || '';
     
     if (!this.apiKey) {
-      console.error('STRYK_API_KEY is not set. API requests will fail.');
+      console.error('STRYKR_API_KEY is not set. API requests will fail.');
     }
   }
 
   /**
    * Send a query to the Strykr AI API and get financial insights
    * @param query The financial query to send to Strykr AI
-   * @returns The response from Stryk.ai with financial insights
+   * @returns The response from Strykr.ai with financial insights
    */
-  public async getInsight(query: string): Promise<StrykResponse> {
+  public async getInsight(query: string): Promise<StrykrResponse> {
     try {
       const response = await axios.post(
         `${this.apiUrl}/insights`,
@@ -50,7 +50,7 @@ export class StrykApiClient {
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
-            'X-Stryk-Client': 'auto-bot'
+            'X-Strykr-Client': 'auto-bot'
           },
           timeout: 30000 // 30 seconds timeout
         }

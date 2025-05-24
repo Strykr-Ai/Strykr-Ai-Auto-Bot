@@ -1,7 +1,7 @@
 import { TwitterScraper } from './twitter-scraper';
 import { CategorizationEngine } from './categorization-engine';
 import { QueryBuilder } from './query-builder';
-import { StrykApiClient } from './stryk-api-client.js';
+import { StrykrApiClient } from './strykr-api-client.js';
 import { ContentFormatter } from './content-formatter';
 import * as cron from 'node-cron';
 import * as fs from 'fs';
@@ -11,13 +11,13 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 /**
- * Main orchestrator that coordinates all components of the Stryk.ai financial monitoring system
+ * Main orchestrator that coordinates all components of the Strykr.ai financial monitoring system
  */
 export class MainOrchestrator {
   private twitterScraper: TwitterScraper;
   private categorizationEngine: CategorizationEngine;
   private queryBuilder: QueryBuilder;
-  private strykApiClient: StrykApiClient;
+  private strykrApiClient: StrykrApiClient;
   private contentFormatter: ContentFormatter;
   private cacheDir: string;
   private isRunning: boolean = false;
@@ -27,7 +27,7 @@ export class MainOrchestrator {
     this.twitterScraper = new TwitterScraper();
     this.categorizationEngine = new CategorizationEngine();
     this.queryBuilder = new QueryBuilder();
-    this.strykApiClient = new StrykApiClient();
+    this.strykrApiClient = new StrykrApiClient();
     this.contentFormatter = new ContentFormatter();
     
     // Set up cache directory for processed queries
@@ -40,7 +40,7 @@ export class MainOrchestrator {
    * @param cronSchedule Cron schedule expression (default: every hour)
    */
   public startAutomatedProcess(cronSchedule: string = '0 * * * *'): void {
-    console.log(`Starting Stryk.ai financial monitoring system...`);
+    console.log(`Starting Strykr.ai financial monitoring system...`);
     console.log(`Scheduled to run with cron pattern: ${cronSchedule}`);
     
     // Run immediately on start
@@ -115,13 +115,13 @@ export class MainOrchestrator {
         return { success: true, message: 'Topic recently processed, skipped' };
       }
       
-      // Step 4: Send query to Stryk.ai API
-      console.log('Requesting insights from Stryk.ai...');
-      const strykResponse = await this.strykApiClient.getInsight(queryResult.query);
+      // Step 4: Send query to Strykr.ai API
+      console.log('Requesting insights from Strykr.ai...');
+      const strykrResponse = await this.strykrApiClient.getInsight(queryResult.query);
       
       // Step 5: Format content for social media
       console.log('Formatting content for social media...');
-      const formattedContent = this.contentFormatter.formatContent(queryResult, strykResponse);
+      const formattedContent = this.contentFormatter.formatContent(queryResult, strykrResponse);
       
       // Step 6: Cache this processed topic
       await this.cacheProcessedTopic(

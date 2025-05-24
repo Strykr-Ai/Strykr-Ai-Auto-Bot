@@ -1,6 +1,6 @@
 /**
  * @file index.ts
- * @description Main entry point for the Stryk.ai Auto Bot core package
+ * @description Main entry point for the Strykr.ai Auto Bot core package
  */
 
 import { MainOrchestrator } from './main-orchestrator.js';
@@ -13,7 +13,7 @@ dotenv.config();
 export { TwitterScraper, EnrichedTweet } from './twitter-scraper.js';
 export { CategorizationEngine, Topic } from './categorization-engine.js';
 export { QueryBuilder, QueryResult } from './query-builder.js';
-export { StrykApiClient, StrykResponse } from './stryk-api-client.js';
+export { StrykrApiClient, StrykrResponse } from './strykr-api-client.js';
 export { ContentFormatter, FormattedContent } from './content-formatter.js';
 export { MainOrchestrator } from './main-orchestrator.js';
 
@@ -25,7 +25,7 @@ const isMainModule = (): boolean => {
 };
 
 if (isMainModule()) {
-  console.log('Starting Stryk.ai Auto Bot...');
+  console.log('Starting Strykr.ai Auto Bot...');
   
   const orchestrator = new MainOrchestrator();
   
@@ -35,6 +35,6 @@ if (isMainModule()) {
   // Start the automated process
   orchestrator.startAutomatedProcess(schedule);
   
-  console.log(`Stryk.ai Auto Bot running with schedule: ${schedule}`);
+  console.log(`Strykr.ai Auto Bot running with schedule: ${schedule}`);
   console.log('Press Ctrl+C to stop');
 }

@@ -1,10 +1,5 @@
-import { Telegraf } from "telegraf";
-import { askGPT } from "../../core/dist/openai.js";
-import defiLlama from "../../core/dist/defillama.js";
-import { createRAG } from "../../core/dist/simple-rag.js";
-import scheduledUpdates from "../../core/dist/scheduled-updates.js";
-import twitterClient from "../../core/dist/twitter.js";
-import { registerBotCommands } from "./bot-commands.js";
+import { Telegraf, Markup } from "telegraf";
+import { MainOrchestrator, FormattedContent } from "@strykr-ai/core";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
@@ -18,153 +13,296 @@ const __dirname = dirname(__filename);
 const envPath = resolve(__dirname, "../../../.env");
 
 /**
- * Initialize DefiLlama data and schedule updates
+ * Telegram Bot wrapper for Strykr.ai Auto Bot
  */
-async function initializeDefiLlamaData(): Promise<void> {
-  try {
-    console.log('Fetching initial Worldchain DeFi data from DefiLlama...');
-    await defiLlama.updateWorldchainData();
-    console.log('Initial Worldchain DeFi data fetched successfully');
+class StrykrTelegramBot {
+  private bot: Telegraf;
+  private orchestrator: MainOrchestrator;
+  private channelId: string;
+  private isRunning: boolean = false;
+  private postInterval: NodeJS.Timeout | null = null;
+
+  /**
+   * Initialize the Telegram bot
+   */
+  constructor() {
+    // Load environment variables
+    this.loadEnvironment();
     
-    // Schedule updates every 4 hours
-    defiLlama.scheduleUpdates();
-  } catch (error) {
-    console.error('Failed to initialize DefiLlama data:', error);
-    // Continue bot startup even if DeFi data fails
+    // Initialize Telegram bot
+    this.bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!);
+    
+    // Set the channel ID for announcements
+    this.channelId = process.env.TELEGRAM_CHANNEL_ID || '';
+    
+    // Initialize the main orchestrator
+    this.orchestrator = new MainOrchestrator();
+  }
+
+  /**
+   * Load environment variables
+   */
+  private loadEnvironment(): void {
+    // Check if .env file exists
+    if (!fs.existsSync(envPath)) {
+      console.error(`Error: .env file not found at ${envPath}`);
+      process.exit(1);
+    }
+    
+    // Load environment variables
+    console.log(`Loading environment variables from ${envPath}`);
+    const result = dotenv.config({ path: envPath });
+    
+    if (result.error) {
+      console.error('Error loading .env file:', result.error);
+      process.exit(1);
+    }
+    
+    // Check for required environment variables
+    const requiredVars = ['TELEGRAM_BOT_TOKEN'];
+    const missingVars = requiredVars.filter(varName => !process.env[varName]);
+    
+    if (missingVars.length > 0) {
+      console.error(`Error: Missing required environment variables: ${missingVars.join(', ')}`);
+      process.exit(1);
+    }
+    
+    // Warn if no channel ID is set
+    if (!process.env.TELEGRAM_CHANNEL_ID) {
+      console.warn('Warning: TELEGRAM_CHANNEL_ID is not set. Announcements will not be sent to a channel.');
+    }
+  }
+
+  /**
+   * Initialize bot commands and handlers
+   */
+  private initializeBot(): void {
+    // Set up bot commands
+    this.bot.command('start', (ctx) => {
+      ctx.reply(
+        'Welcome to the Strykr.ai Auto Bot! 🚀\n\n' +
+        'I monitor financial markets and post AI-powered insights based on trending topics.\n\n' +
+        'Use /help to see available commands.'
+      );
+    });
+
+    this.bot.command('help', (ctx) => {
+      ctx.reply(
+        'Available commands:\n\n' +
+        '/start - Start the bot\n' +
+        '/help - Show this help message\n' +
+        '/status - Check the bot status\n' +
+        '/run - Run the financial monitoring process once\n' +
+        '/schedule - Start scheduled posting\n' +
+        '/stop - Stop scheduled posting\n' +
+        '/info - About Strykr.ai Auto Bot'
+      );
+    });
+
+    this.bot.command('status', async (ctx) => {
+      const status = this.isRunning ? 
+        '✅ The bot is running and posting on schedule' : 
+        '⏸️ The bot is not currently posting on a schedule';
+      
+      ctx.reply(status);
+    });
+
+    this.bot.command('run', async (ctx) => {
+      await ctx.reply('🔍 Running financial monitoring process...');
+      
+      try {
+        // Run the process and get the result
+        const result = await this.orchestrator.runFullProcess();
+        
+        if (result.success) {
+          // Get the latest content
+          const content = await this.orchestrator.getLatestContent();
+          
+          if (content) {
+            // Post to the current chat
+            await ctx.reply(content.telegram, { parse_mode: 'Markdown' });
+            
+            // Also post to the channel if set
+            if (this.channelId) {
+              await this.postToChannel(content.telegram);
+              await ctx.reply('✅ Posted to the announcement channel!');
+            }
+          } else {
+            await ctx.reply('✅ Process completed, but no new content was generated.');
+          }
+        } else {
+          await ctx.reply(`❌ Process failed: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error running process:', error);
+        await ctx.reply('❌ An error occurred while running the process.');
+      }
+    });
+
+    this.bot.command('schedule', (ctx) => {
+      if (this.isRunning) {
+        ctx.reply('⚠️ The bot is already running on a schedule.');
+        return;
+      }
+      
+      // Get schedule from environment or use default (hourly)
+      const schedule = process.env.MONITORING_SCHEDULE || '0 * * * *';
+      const intervalMinutes = 60; // Default to hourly
+      
+      // Start the posting schedule
+      this.startSchedule(intervalMinutes);
+      
+      ctx.reply(
+        `✅ Scheduled posting started!\n\n` +
+        `The bot will check for trending financial topics and post insights every ${intervalMinutes} minutes.\n\n` +
+        `Use /stop to stop scheduled posting.`
+      );
+    });
+
+    this.bot.command('stop', (ctx) => {
+      if (!this.isRunning) {
+        ctx.reply('⚠️ The bot is not currently running on a schedule.');
+        return;
+      }
+      
+      // Stop the posting schedule
+      this.stopSchedule();
+      
+      ctx.reply('✅ Scheduled posting stopped. Use /schedule to start again.');
+    });
+
+    this.bot.command('info', (ctx) => {
+      ctx.reply(
+        'ℹ️ About Strykr.ai Auto Bot\n\n' +
+        'This bot monitors financial Twitter accounts, identifies trending topics, ' +
+        'and generates insights using the Strykr.ai API.\n\n' +
+        'Created by the Strykr.ai team'
+      );
+    });
+
+    // Handle unknown commands
+    this.bot.on('text', (ctx) => {
+      if (ctx.message.text.startsWith('/')) {
+        ctx.reply('Unknown command. Use /help to see available commands.');
+      }
+    });
+  }
+
+  /**
+   * Start the posting schedule
+   */
+  private startSchedule(intervalMinutes: number): void {
+    if (this.isRunning) return;
+    
+    this.isRunning = true;
+    
+    // Convert minutes to milliseconds
+    const intervalMs = intervalMinutes * 60 * 1000;
+    
+    // Set up the interval
+    this.postInterval = setInterval(async () => {
+      try {
+        console.log('Running scheduled financial monitoring process...');
+        
+        // Run the process
+        const result = await this.orchestrator.runFullProcess();
+        
+        if (result.success) {
+          // Get the latest content
+          const content = await this.orchestrator.getLatestContent();
+          
+          if (content && this.channelId) {
+            // Post to the channel
+            await this.postToChannel(content.telegram);
+            console.log('Posted new content to the announcement channel');
+          }
+        } else {
+          console.log(`Scheduled process completed with status: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error in scheduled post:', error);
+      }
+    }, intervalMs);
+    
+    console.log(`Scheduled posting started with ${intervalMinutes} minute interval`);
+  }
+
+  /**
+   * Stop the posting schedule
+   */
+  private stopSchedule(): void {
+    if (!this.isRunning || !this.postInterval) return;
+    
+    clearInterval(this.postInterval);
+    this.postInterval = null;
+    this.isRunning = false;
+    
+    console.log('Scheduled posting stopped');
+  }
+
+  /**
+   * Post a message to the announcement channel
+   */
+  private async postToChannel(message: string): Promise<void> {
+    if (!this.channelId) {
+      console.warn('No channel ID set, skipping channel post');
+      return;
+    }
+    
+    try {
+      await this.bot.telegram.sendMessage(
+        this.channelId,
+        message,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (error) {
+      console.error('Error posting to channel:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start the Strykr.ai Telegram bot
+   */
+  public async start(): Promise<void> {
+    console.log('Starting Strykr.ai Telegram bot...');
+    
+    try {
+      // Initialize bot commands and handlers
+      this.initializeBot();
+      
+      // Launch the bot
+      await this.bot.launch();
+      console.log('Telegram bot is running!');
+      
+      // Handle graceful shutdown
+      process.once('SIGINT', () => {
+        this.stopSchedule();
+        this.bot.stop('SIGINT');
+      });
+      
+      process.once('SIGTERM', () => {
+        this.stopSchedule();
+        this.bot.stop('SIGTERM');
+      });
+    } catch (error) {
+      console.error('Error starting Telegram bot:', error);
+      throw error;
+    }
   }
 }
 
 /**
- * Load environment variables and initialize the bot
+ * Main function to run the bot
  */
 async function main(): Promise<void> {
-  // Check if .env file exists
-  if (!fs.existsSync(envPath)) {
-    console.error(`Error: .env file not found at ${envPath}`);
+  try {
+    const telegramBot = new StrykrTelegramBot();
+    await telegramBot.start();
+  } catch (error) {
+    console.error('Fatal error:', error);
     process.exit(1);
   }
-  
-  // Load environment variables
-  console.log(`Loading environment variables from ${envPath}`);
-  const result = dotenv.config({ path: envPath });
-  
-  if (result.error) {
-    console.error("Error loading environment variables:", result.error);
-    process.exit(1);
-  }
-  
-  console.log("Environment variables loaded successfully");
-  console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "[CONFIGURED]" : "[NOT CONFIGURED]");
-  console.log("TELEGRAM_BOT_TOKEN:", process.env.TELEGRAM_BOT_TOKEN ? "[CONFIGURED]" : "[NOT CONFIGURED]");
-  
-  // Ensure required environment variables are set
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.error("Error: TELEGRAM_BOT_TOKEN environment variable is not set");
-    process.exit(1);
-  }
-  
-  if (!process.env.OPENAI_API_KEY) {
-    console.error("Error: OPENAI_API_KEY environment variable is not set");
-    process.exit(1);
-  }
-  
-  // Initialize DefiLlama data
-  await initializeDefiLlamaData();
-  
-  // Initialize the RAG system
-  const ragSystem = createRAG(process.env.OPENAI_API_KEY as string);
-  await ragSystem.initialize();
-  console.log('RAG system initialized with financial data including Worldchain protocols');
-  
-  // Initialize scheduled updates system (includes Twitter integration)
-  await scheduledUpdates.initializeScheduledUpdates();
-  
-  // Log Twitter client status
-  if (twitterClient.isInitialized()) {
-    console.log('Twitter integration enabled - scheduled updates will be posted to Twitter');
-  } else {
-    console.log('Twitter integration not fully configured - updates will not be posted to Twitter');
-  }
-  
-  // Initialize the Telegram bot
-  const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-  
-  // Basic command handlers
-  bot.start((ctx) => {
-    ctx.reply("Hi! I'm MAGI AI. Ask me anything about Worldchain, DeFi protocols, and mini apps!");
-  });
-  
-  // Register all advanced commands (compare, stats, miniapps, trending)
-  registerBotCommands(bot, ragSystem);
-  
-  // Handle text messages
-  bot.on("text", async (ctx) => {
-    try {
-      // Show typing indicator
-      await ctx.replyWithChatAction("typing");
-      
-      // Check if we have text content
-      if (!ctx.message || !('text' in ctx.message)) {
-        ctx.reply("I couldn't understand your message. Please try again.");
-        return;
-      }
-      
-      const userQuery = ctx.message.text;
-      
-      // Find relevant documents using our RAG system
-      const relevantDocs = await ragSystem.findRelevantDocuments(userQuery, 5);
-      
-      let answer: string;
-      
-      // If we found relevant documents, format them as context for the LLM
-      if (relevantDocs.length > 0) {
-        console.log(`Found ${relevantDocs.length} relevant documents for query: "${userQuery}"`);
-        
-        // Format the documents into a context string
-        const context = ragSystem.formatContext(relevantDocs);
-        
-        // Use the context to enhance the answer
-        answer = await askGPT(
-          userQuery,
-          `You are MAGI AI, a friendly and conversational assistant focused on Worldchain, its protocols, and mini apps. ` +
-          `Use the following context to answer the user's question in a natural, conversational tone. ` +
-          `If the context doesn't contain relevant information, use your general knowledge but acknowledge when you're uncertain.\n\n` +
-          `CONTEXT:\n${context}\n\n` +
-          `IMPORTANT GUIDELINES:\n` +
-          `1. Be conversational and friendly - respond like you're having a natural conversation.\n` +
-          `2. Avoid rigid categorization of information unless explicitly asked.\n` +
-          `3. Present information in a flowing narrative rather than strict categories.\n` +
-          `4. When discussing protocols, include their TVL, user metrics, or other key statistics in a natural way.\n` +
-          `5. Format your responses using Markdown for readability, but keep the style conversational.\n` +
-          `6. If appropriate, suggest using one of the available commands: /compare, /stats, /miniapps, or /trending.`
-        );
-      } else {
-        // If no relevant documents, use general model knowledge
-        console.log(`No relevant documents found for query: "${userQuery}"`);
-        answer = await askGPT(
-          userQuery,
-          `You are MAGI AI, a friendly assistant specialized in Worldchain information. ` +
-          `If you don't know the answer, be honest about it. You can suggest using one of these commands if relevant: ` +
-          `/compare (to compare protocols), /stats (for protocol stats), /miniapps (to explore mini apps), or /trending (for trending protocols).`
-        );
-      }
-      
-      ctx.reply(answer, { parse_mode: 'Markdown' });
-    } catch (error) {
-      console.error("Error processing message:", error);
-      ctx.reply("Sorry, I encountered an error processing your request. Please try again later.");
-    }
-  });
-  
-  // Error handling
-  bot.catch((err, ctx) => {
-    console.error('Bot error:', err instanceof Error ? err.message : String(err));
-    ctx.reply("An error occurred while processing your request. Please try again later.");
-  });
-  
-  // Start the bot
-  await bot.launch();
-  console.log("Bot started with Worldchain DeFi data integration");
 }
 
 // Run the main function

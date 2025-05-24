@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "telegraf": "^4.12.2",
-    "@core/openai": "*"
+    "@strykr-ai/core": "*",
+    "dotenv": "^16.5.0"
   }
 }

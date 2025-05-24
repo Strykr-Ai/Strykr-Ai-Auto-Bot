@@ -19,34 +19,34 @@ export interface QueryResult {
 }
 
 /**
- * Responsible for building contextually relevant queries for the Stryk.ai API
+ * Responsible for building contextually relevant queries for the Strykr.ai API
  * based on detected financial topics and tweets
  */
 export class QueryBuilder {
   private readonly templates: QueryTemplates = {
     MACROECONOMICS: [
-      "What does Stryk.ai think about the recent {keyword} data and its impact on markets?",
+      "What does Strykr.ai think about the recent {keyword} data and its impact on markets?",
       "How might today's news about {keyword} affect market sentiment in the next 24-48 hours?",
-      "What's Stryk.ai's analysis of the market reaction to the latest {keyword} developments?",
+      "How does Strykr.ai assess the recent market reaction to {keyword} developments?",
       "Given the latest {keyword} news, what sectors might outperform or underperform in the short term?",
       "How should investors interpret today's {keyword} news in the context of the broader economic cycle?"
     ],
     EARNINGS: [
-      "What does Stryk.ai think about {company}'s recent earnings report and its implications?",
+      "What does Strykr.ai think about {company}'s recent earnings report and its implications?",
       "How might {company}'s earnings results impact its sector and related stocks?",
-      "What's Stryk.ai's take on {company}'s guidance and forward outlook?",
+      "What's Strykr.ai's take on {company}'s guidance and forward outlook?",
       "Given {company}'s recent performance, how might their competitive position change?",
       "What key metrics from {company}'s earnings should investors focus on most?"
     ],
     TECH_AI: [
-      "What's Stryk.ai's analysis of the recent developments in {keyword} technology?",
+      "What does Strykr.ai predict for {keyword} policy developments in the coming weeks?",
       "How might the news about {keyword} impact the broader tech ecosystem?",
       "What are the investment implications of today's {keyword} announcements?",
-      "How does Stryk.ai interpret the market's reaction to recent {keyword} news?",
+      "How does Strykr.ai interpret the market's reaction to recent {keyword} news?",
       "What second-order effects might emerge from these {keyword} developments?"
     ],
     CRYPTO: [
-      "What's Stryk.ai's take on the recent movements in {keyword} prices?",
+      "What's Strykr.ai's take on the recent movements in {keyword} prices?",
       "How might today's {keyword} news impact the broader digital asset ecosystem?",
       "What factors are driving the current {keyword} market conditions?",
       "How should investors interpret the recent {keyword} developments?",
@@ -54,7 +54,7 @@ export class QueryBuilder {
     ],
     REGULATION: [
       "How might the new {keyword} regulations impact financial markets?",
-      "What's Stryk.ai's analysis of the potential consequences of these {keyword} regulatory changes?",
+      "What's Strykr.ai's analysis of the potential consequences of these {keyword} regulatory changes?",
       "How should investors position themselves in light of these {keyword} regulatory developments?",
       "What sectors or companies might be most affected by these {keyword} regulatory changes?",
       "What precedent do these {keyword} regulatory actions set for future market governance?"
@@ -62,7 +62,7 @@ export class QueryBuilder {
   };
 
   /**
-   * Builds a contextually relevant query for the Stryk.ai API
+   * Builds a contextually relevant query for the Strykr.ai API
    * @param topic The financial topic to build a query for
    * @returns A structured query result with context
    */

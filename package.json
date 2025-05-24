@@ -1,5 +1,5 @@
 {
-  "name": "stryk-ai-auto-bot",
+  "name": "strykr-ai-auto-bot",
   "private": true,
   "packageManager": "npm@10.8.3",
   "workspaces": [

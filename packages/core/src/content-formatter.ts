@@ -1,5 +1,5 @@
 import { QueryResult } from './query-builder';
-import { StrykResponse } from './stryk-api-client.js';
+import { StrykrResponse } from './strykr-api-client.js';
 import { Topic } from './categorization-engine';
 
 /**
@@ -14,16 +14,16 @@ export interface FormattedContent {
 }
 
 /**
- * Formats Stryk.ai insights for posting to social media platforms
+ * Formats Strykr.ai insights for posting to social media platforms
  */
 export class ContentFormatter {
   /**
    * Format content for Telegram and Twitter posts
    * @param queryResult The original query and context
-   * @param strykResponse The response from Stryk.ai
+   * @param strykResponse The response from Strykr.ai
    * @returns Formatted content for each platform
    */
-  public formatContent(queryResult: QueryResult, strykResponse: StrykResponse): FormattedContent {
+  public formatContent(queryResult: QueryResult, strykResponse: StrykrResponse): FormattedContent {
     // Get emoji based on topic category
     const categoryEmoji = this.getCategoryEmoji(queryResult.topic.category);
     
