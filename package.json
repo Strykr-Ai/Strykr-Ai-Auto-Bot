@@ -1,5 +1,5 @@
 {
-  "name": "magi-ai-bot",
+  "name": "stryk-ai-auto-bot",
   "private": true,
   "packageManager": "npm@10.8.3",
   "workspaces": [
@@ -8,22 +8,22 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "start": "node packages/core/dist/index.js"
   },
   "devDependencies": {
-    "@types/node": "^20.11.0",
+    "@types/node": "^20.17.50",
+    "@types/node-cron": "^3.0.11",
+    "dotenv": "^16.5.0",
     "ts-node": "^10.9.2",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.0",
+    "twitter-api-v2": "^1.23.2",
+    "typescript": "^5.8.3",
     "wrangler": "^4.16.1"
   },
   "dependencies": {
-    "@pinecone-database/pinecone": "^6.0.1",
-    "@xenova/transformers": "^2.17.2",
     "axios": "^1.9.0",
-    "dotenv": "^16.5.0",
-    "langchain": "^0.3.27",
     "node-cron": "^4.0.6",
-    "openai-edge": "^1.2.2"
+    "telegraf": "^4.15.0"
   }
 }

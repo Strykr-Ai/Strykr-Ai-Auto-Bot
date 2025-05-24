@@ -1,56 +1,59 @@
 /**
- * Shared type definitions for the MAGI AI bot
+ * Shared type definitions for the Stryk.ai Auto Bot
  */
 
 /**
- * Represents a chunk of document content with metadata
+ * Financial category types for categorization and query building
  */
-export interface DocumentChunk {
-  content: string;
-  source: string;
-  score?: number;
-  protocol?: string; // Added for tracking protocol names
-  category?: string; // Added for protocol categorization
+export enum FinancialCategory {
+  MACROECONOMICS = 'MACROECONOMICS',
+  EARNINGS = 'EARNINGS',
+  TECH_AI = 'TECH_AI',
+  CRYPTO = 'CRYPTO',
+  REGULATION = 'REGULATION'
 }
 
 /**
- * Worldchain protocol data structure
+ * Financial tweet with metadata and engagement metrics
  */
-export interface WorldchainProtocol {
-  Name: string;
-  Category: string;
-  TVL: string;
-  "1d Change": string;
-  "Revenue 24h": string;
-  "Volume 24h": string;
-  "Fees/Vol (raw)": string;
+export interface FinancialTweet {
+  id: string;
+  text: string;
+  authorId: string;
+  authorUsername: string;
+  createdAt: Date;
+  engagement: {
+    retweets: number;
+    likes: number;
+    replies: number;
+    quotes: number;
+  };
+  keywords?: string[];
+  category?: FinancialCategory;
 }
 
 /**
- * Worldchain mini app data structure
+ * Cache record for processed financial topics
  */
-export interface WorldchainMiniApp {
-  Name: string;
-  Category: string;
-  Description: string;
+export interface ProcessedTopicCache {
+  id: string;
+  category: FinancialCategory;
+  keywords: string[];
+  timestamp: Date;
+  query: string;
+  strykrResponse: string;
+  telegramContent: string;
+  twitterContent: string;
 }
 
 /**
- * Protocol statistics data structure
+ * Configuration options for the financial monitoring system
  */
-export interface ProtocolStats {
-  "App Name": string;
-  "Global Ranking"?: number;
-  "Total Apps Ranked"?: number;
-  "Impressions"?: number;
-  "Impression Growth (%)"?: number;
-  "Sessions"?: number;
-  "Users"?: number;
-  "Verifications"?: number;
-  "Unique Users"?: number;
-  "Loans Issued"?: number;
-  "Total TVL (USD)"?: number;
-  "Total NFT Mints"?: number;
-  "Total USDC Repaid"?: number;
-  [key: string]: string | number | undefined;
+export interface StrykrBotConfig {
+  monitoringSchedule: string;
+  financialAccounts: string[];
+  maxTopicsPerRun: number;
+  minEngagementScore: number;
+  enableDeduplication: boolean;
+  debug: boolean;
 }
